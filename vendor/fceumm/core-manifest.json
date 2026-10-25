@@ -1,0 +1,7 @@
+{
+  "version": "0.13.2+nes-web.1",
+  "sha256": {
+    "vendor/fceumm/fceumm_libretro.js": "8dee5b7c2f78e30c53ce85798f743d620f190a7d7376aa17085798e703cce9a9",
+    "vendor/tsnes/dist/fceumm_libretro.wasm": "76b26cd8fd1ef93dc93a7da16d3336b9ce26531c0c801297eec20dc080d8033d"
+  }
+}

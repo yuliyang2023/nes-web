@@ -65,7 +65,7 @@ async function main() {
             assert.match(await response.text(), /System\.import\('main'\)/);
         }
         for (const route of ['/assets/app.js', '/assets/app.css', '/app.manifest',
-            '/cdn/tsnes/dist/nes.js', '/roms/' + name + '.nes', '/screen/' + name + '.png']) {
+            '/cdn/tsnes/dist/nes.js', '/cdn/tsnes/dist/fceumm_libretro.wasm', '/roms/' + name + '.nes', '/screen/' + name + '.png']) {
             assert.equal((await fetch(base + route)).status, 200, route);
         }
         await new Promise((resolve, reject) => {

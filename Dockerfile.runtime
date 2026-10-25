@@ -1,5 +1,6 @@
 # Build the source first with npm run build:source.
-FROM node:24-alpine
+ARG BASE_IMAGE=node:24-alpine
+FROM ${BASE_IMAGE}
 WORKDIR /
 COPY dist/server /server
 COPY dist/client /client

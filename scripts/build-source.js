@@ -4,6 +4,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { createRequire } = require('node:module');
 const root = path.resolve(__dirname, '..');
+require('./build-core');
 const toolRequire = createRequire(path.join(root, 'build-tools/package.json'));
 const ts = toolRequire('typescript');
 const sass = toolRequire('sass');
@@ -112,7 +113,7 @@ async function main() {
         if (!file.startsWith('tsnes/')) throw new Error('Unsupported local browser dependency: ' + file);
         fs.mkdirSync(path.dirname(path.join(clientOut, 'cdn', file)), { recursive: true });
         fs.copyFileSync(path.join(root, 'vendor', file), path.join(clientOut, 'cdn', file));
-        map.tsnes = 'cdn/' + file;
+        if (file.endsWith('.js')) map.tsnes = 'cdn/' + file;
     }
     let html = fs.readFileSync(path.join(clientSource, 'index.html'), 'utf8');
     html = html.replace('<html lang="en">', '<html lang="en" manifest="app.manifest">');
@@ -124,6 +125,10 @@ async function main() {
         '\n<script src="assets/app.js"></script>\n<script>System.config(' + JSON.stringify({ paths: { 'cdn/': 'cdn/' }, map }) + ');</script>');
     write(path.join(clientOut, 'index.html'), html);
     fs.copyFileSync(path.join(root, 'packaging/fnos/ICON.PNG'), path.join(clientOut, 'assets/favicon.png'));
+    fs.mkdirSync(path.join(clientOut, 'licenses/tsnes'), { recursive: true });
+    fs.copyFileSync(path.join(root, 'LICENSE'), path.join(clientOut, 'licenses/tsnes/LICENSE'));
+    fs.copyFileSync(path.join(root, 'vendor/tsnes/legacy/nes.js'), path.join(clientOut, 'licenses/tsnes/nes.js'));
+    fs.cpSync(path.join(root, 'vendor/fceumm'), path.join(clientOut, 'licenses/fceumm'), { recursive: true });
     const cacheFiles = files(clientOut, '').map(file => path.relative(clientOut, file).replace(/\\/g, '/')).sort();
     const hash = crypto.createHash('sha256');
     for (const file of cacheFiles) hash.update(file).update(fs.readFileSync(path.join(clientOut, file)));

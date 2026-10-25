@@ -48,7 +48,9 @@ def main():
             assert not any(member.name.endswith('.nes') for member in app.getmembers()), 'ROM included in FPK'
             for name in ['client', 'database']:
                 assert json.load(app.extractfile('server/config/' + name + '.json')) == {}
-            assert b'mappers[23] = Mapper23' in app.extractfile('client/cdn/tsnes/dist/nes.js').read()
+            assert b'FCEUmm' in app.extractfile('client/cdn/tsnes/dist/nes.js').read()
+            assert app.extractfile('client/cdn/tsnes/dist/fceumm_libretro.wasm').read(8) == b'\x00asm\x01\x00\x00\x00'
+            assert app.extractfile('client/licenses/fceumm/LICENSE').read()
             assert '简体中文'.encode() in app.extractfile('client/assets/app.js').read()
             assert b'#f5f7fb' in app.extractfile('client/assets/app.css').read()
             entry = json.load(app.extractfile('ui/config'))['.url']['nes-web.main']

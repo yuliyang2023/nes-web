@@ -43,20 +43,29 @@ export class GameComponent implements OnInit, OnDestroy {
     ) {
     }
 
+    private requestGeneration = 0;
+
     ngOnInit() {
         this.subscriptions.push(
             this.route.params.subscribe(params => {
+                const generation = ++this.requestGeneration;
+                this.game = null;
+                this.message = null;
                 this.name = params.name;
                 this.gameService.getGame(this.name)
                 .then(game => {
+                    if (generation !== this.requestGeneration) return;
                     this.game = game;
                     if (!game.multiplayer) {
                         this.playingMode = PlayingMode.singleplayer;
                     }
-                    this.gameService.getRom(game.name)
-                    .then(rom => this.playingService.load(game.name, rom));
+                    return this.gameService.getRom(game.name)
+                    .then(rom => {
+                        if (generation === this.requestGeneration) return this.playingService.load(game.name, rom);
+                    });
                 })
                 .catch(error => {
+                    if (generation !== this.requestGeneration) return;
                     this.game = null;
                     this.message = error.message;
                 });
@@ -79,6 +88,7 @@ export class GameComponent implements OnInit, OnDestroy {
     }
 
     ngOnDestroy() {
+        ++this.requestGeneration;
         this.subscriptions.forEach(s => s.unsubscribe());
         this.playingService.pause();
         this.roomService.abandon();

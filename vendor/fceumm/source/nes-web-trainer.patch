@@ -1,0 +1,30 @@
+--- a/src/boards/asic_vrc2and4.c
++++ b/src/boards/asic_vrc2and4.c
+@@ -22,6 +22,9 @@
+ #include "asic_vrc2and4.h"
+ #include "cartram.h"
+ 
++/* Trainer translations execute self-modifying code in cartridge RAM. */
++extern uint8_t *trainerpoo;
++
+ static void (*VRC24_cbSync)();
+ static int VRC24_A0, VRC24_A1;
+ static int (*VRC24_cbGetPRGBank)(uint8_t);
+@@ -108,7 +111,7 @@
+ }
+ 
+ DECLFR (VRC24_readWRAM) {
+-	if (VRC24_misc &1 || !VRC24_isVRC4) {
++	if (VRC24_misc &1 || !VRC24_isVRC4 || trainerpoo) {
+ 		if (VRC24_cbReadWRAM)
+ 			return VRC24_cbReadWRAM(A);
+ 		else
+@@ -126,7 +129,7 @@
+ }
+ 
+ DECLFW (VRC24_writeWRAM) {
+-	if (VRC24_misc &1 || !VRC24_isVRC4) {
++	if (VRC24_misc &1 || !VRC24_isVRC4 || trainerpoo) {
+ 		if (WRAMSize)
+ 			CartBW(((A -0x6000) &(WRAMSize -1)) +0x6000, V);
+ 		if (VRC24_cbWriteWRAM)

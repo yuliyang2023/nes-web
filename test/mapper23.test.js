@@ -1,7 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const { Emulator } = require('../vendor/tsnes');
+const { Emulator } = require('../vendor/tsnes/legacy/nes.js');
 
 function fixture(mapper = 23) {
     const data = new Uint8Array(16 + 4 * 16384 + 8 * 8192);

@@ -21,6 +21,7 @@ const interval = 50;
 export class PlayingService {
 
     private emulator: Emulator;
+    private loadGeneration = 0;
     speaker: Speaker;
     private animationRequestId: number;
     private intervalId: number;
@@ -38,7 +39,9 @@ export class PlayingService {
         this.speaker = new Speaker();
         this.emulator.onsample = this.speaker.push.bind(this.speaker);
         this.emulator.onerror = error => this._status.next(PlayingStatus.error);
-        this.speaker.onbufferunderrun = () => this.emulator.frame();
+        this.speaker.onbufferunderrun = () => {
+            if (this.statusValue === PlayingStatus.running) this.emulator.frame();
+        };
         this.startTimer();
     }
 
@@ -59,8 +62,18 @@ export class PlayingService {
         return this._output;
     }
 
-    load(name: string, rom: ArrayBuffer) {
-        this.emulator.load(rom);
+    async load(name: string, rom: ArrayBuffer): Promise<void> {
+        const generation = ++this.loadGeneration;
+        this.speaker.close();
+        this.cancelAnimation();
+        this._status.next(PlayingStatus.waiting);
+        try {
+            await this.emulator.load(rom);
+        } catch (error) {
+            if (generation === this.loadGeneration) this._status.next(PlayingStatus.error);
+            throw error;
+        }
+        if (generation !== this.loadGeneration) return;
         this._name.next(name);
         this._status.next(PlayingStatus.ready);
         this._coverImage.next(null);

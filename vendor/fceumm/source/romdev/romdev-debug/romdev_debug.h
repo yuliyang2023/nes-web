@@ -1,0 +1,223 @@
+/* romdev_debug.h - the shared debug ABI for ALL romdev emulator cores.
+ *
+ * WHY THIS EXISTS: every core used to inline ~700 lines of identical bookkeeping
+ * (watchpoint table, coverage ring + dedup, range/read buffers, register-snapshot
+ * packing, pcbreak/watchdog state, the EMSCRIPTEN_KEEPALIVE exports). That was ~70%
+ * copy-paste across 17 cores - an N-way edit for every change and a silent-drift
+ * risk vs the host. This file + romdev_debug.c own that shared 70% in ONE place.
+ *
+ * THE SPLIT:
+ *   - romdev_debug.c provides the SHARED machinery + every `romdev_*` export the
+ *     host probes (the ABI). Build it into each core (one extra .o).
+ *   - Each core provides only a thin HOOK SHIM: it calls the romdev_on_* functions
+ *     below from its memory bus + dispatch loop, passing its OWN cpu PC, the
+ *     pre-write value, and (optionally) the active-bank ROM offset. It also fills
+ *     romdev_snap_regs[] from its CPU struct on a hit. That's the ~30% that is
+ *     genuinely per-core (different register structs, different bus tap points).
+ *
+ * THE HOST CONTRACT (LibretroHost.js feature-detects these by symbol name - a core
+ * lights up a tool the instant it exports the matching function): the exports below
+ * MUST keep their signatures + out[] packing. The conformance test
+ * (test/romdev-debug-abi.test.js) probes each migrated core's wasm for this set.
+ *
+ * C89, freestanding-friendly, no libc beyond memcpy-by-loop. C++ cores include it
+ * inside `extern "C" { }`.
+ */
+#ifndef ROMDEV_DEBUG_H
+#define ROMDEV_DEBUG_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* ── capacities (must match what the host's get-functions read out) ── */
+#define ROMDEV_COV_CAP    8192   /* distinct PCs the coverage ring holds */
+#define ROMDEV_RANGE_CAP  4096   /* range-watch event ring */
+#define ROMDEV_SNAP_REGS  19     /* registers in a snapshot (romdev_snap_regs[]) */
+#define ROMDEV_SNAP_WORDS 21     /* regsnap_get out: [kind, count(19), regs0..18] */
+#define ROMDEV_TRACE_MAX  (1u << 22) /* instruction-trace ring entries at most (32 MB) */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * PART 1 - exports the HOST calls (the ABI). Implemented in romdev_debug.c.
+ *   `out` buffers are caller-allocated; the packing is fixed (see each comment).
+ * ═════════════════════════════════════════════════════════════════════════ */
+
+/* Write-watchpoint: fire when a WRITE hits `addr` (optionally gated by a value
+ * condition). out6: [enabled, addr, last_pc, last_val, hits, last_rom_off, last_old]. */
+void romdev_watchpoint_set(unsigned addr, int enabled);
+void romdev_watchpoint_set_cond(unsigned addr, int enabled, int cond, int val);
+void romdev_watchpoint_get(unsigned *out, int clearHits);
+
+/* Read-watchpoint: fire when a READ hits `addr`.
+ * out5: [enabled, addr, last_pc, last_val, hits]. */
+void romdev_readwatch_set(unsigned addr, int enabled);
+void romdev_readwatch_get(unsigned *out, int clearHits);
+
+/* ── Game Genie / cheat value-override ──────────────────────────────────────────
+ * A memory-read substitution device, exactly like a hardware Game Genie: when the CPU
+ * reads `addr`, the substitute `value` is returned instead of the real byte - optionally
+ * only when the real byte equals `compare` (the "compare" codes that survive bank
+ * switching). Up to ROMDEV_CHEAT_SLOTS active codes. The core's MemoryRead calls
+ * romdev_cheat_read(addr, realByte) and returns whatever it gives back.
+ *   slot      0..ROMDEV_CHEAT_SLOTS-1
+ *   addr      the (masked) read address to intercept
+ *   value     the byte to substitute
+ *   compare   the expected original byte (only used if hasCompare)
+ *   hasCompare 0 = always substitute; 1 = only when realByte == compare
+ *   enabled   1 = active, 0 = clear this slot */
+#define ROMDEV_CHEAT_SLOTS 24
+void romdev_cheat_set(int slot, unsigned addr, unsigned char value,
+                      unsigned char compare, int hasCompare, int enabled);
+/* out fills [enabled, addr, value, compare, hasCompare] for `slot`. */
+void romdev_cheat_get(int slot, unsigned *out);
+/* The read-substitution the core's bus read calls. Returns the byte to actually use
+ * (the substitute if a matching cheat is active, else `realByte`). Cheap when idle. */
+unsigned char romdev_cheat_read(unsigned addr, unsigned char realByte);
+
+/* Range watch: log {pc,addr,val} for every R/W in [lo,hi] (mode 1=read 2=write 3=both).
+ * get fills `out` with INTERLEAVED triples [pc0,addr0,val0, pc1,addr1,val1, ...] up to
+ * `max` events (returns the count); out2 (if non-null) gets [total, stored]. */
+void romdev_range_set(unsigned lo, unsigned hi, int mode, int enabled);
+unsigned romdev_range_get(unsigned *out, unsigned max, unsigned *out2);
+
+/* PC breakpoint + single-step + watchdog. set(addr,enabled,step); a hit freezes the
+ * CPU (the core's dispatch checks the freeze via romdev_on_dispatch). watchdog_set
+ * arms a no-hit timeout. out is 11 words:
+ *   [enabled, addr, hit, last_pc, hits, watchdog,  reg0, reg1, reg2, reg3, reg4]
+ * Slots 6-10 are an at-hit register snapshot the core fills (6502: A,X,Y,P,S); a core
+ * that doesn't fill them leaves 0xFFFFFFFF = "not captured" (the host pre-seeds those). */
+void romdev_pcbreak_set(unsigned addr, int enabled, int step);
+void romdev_pcbreak_get(unsigned *out, int clearHit);
+void romdev_watchdog_set(unsigned limit);
+
+/* Coverage: which distinct PCs dispatched in [lo,hi]. get fills `out` with up to
+ * `max` distinct PCs (returns the count); out2 (if non-null) gets [distinct, total]. */
+void romdev_cov_set(unsigned lo, unsigned hi, int enabled);
+unsigned romdev_cov_get(unsigned *out, unsigned max, unsigned *out2);
+/* Exact coverage: one bit per PC over [lo, hi) at a granularity of (1 << shift) bytes
+   (0 = byte: 6502/Z80/SM83/65816/HuC6280; 1 = halfword: 68000/Thumb/SH-4; 2 = word: MIPS)
+   -- no cap, O(1) per instruction. covbits_set allocates the bitmap ((hi-lo) >> shift bits)
+   and arms it; covbits_get copies up to `maxWords` 32-bit words of the bitmap into `out`
+   and returns the bitmap's word count (out2[0] = executed instruction count, out2[1] =
+   distinct PCs set, out2[2] = the shift in force, so the host can verify granularity). */
+void romdev_covbits_set(unsigned lo, unsigned hi, int enabled, unsigned shift);
+unsigned romdev_covbits_get(unsigned *out, unsigned maxWords, unsigned *out2);
+
+/* At-hit CPU register snapshot. The core fills romdev_snap_regs[] (ROMDEV_SNAP_REGS
+ * registers) on a hit via its snapshot shim; the host reads it here. out is
+ * ROMDEV_SNAP_WORDS (21) words: [0]=kind (0 = no snapshot), [1]=count (=19),
+ * [2..20]=the per-CPU register layout. */
+void romdev_regsnap_get(unsigned *out, int clear);
+
+/* Instruction trace: every EXECUTED instruction's dispatch pc and the core's clock at
+ * that dispatch, in execution order, recorded in a ring of `cap` entries (2 u32 each:
+ * [pc, clock]) while the machine free-runs. Unlike single-step (which freezes the CPU
+ * while the rest of the machine finishes the frame, so every stepped instruction is a
+ * frame apart in machine time) the trace does not perturb timing: it is the stream
+ * the core really executed. `cpumask` picks which dispatching CPUs are recorded (bit
+ * n = the `cpu` a core passes to romdev_on_dispatch_ex; the main CPU is 0, a second
+ * CPU such as genesis_plus_gx's Z80 is 1). set() restarts the count; returns the
+ * capacity allocated (0 = none). info out7: [enabled, cap, count, bufPtr, cpumask,
+ * wordsPerEntry, nRegs]; entry k (0-based since set) lives at
+ * bufPtr + 4 * wordsPerEntry * (k % cap) while k >= count - cap. */
+unsigned romdev_trace_set(unsigned cap, int enabled, unsigned cpumask);
+void romdev_trace_info(unsigned *out);
+/* Register columns: romdev_trace_regs(1) BEFORE romdev_trace_set makes every entry
+ * [pc, clock, reg0..regN-1] when the core provides registers (see
+ * romdev_trace_provide_regs); info out7 then reads [.., wordsPerEntry, nRegs]. The
+ * layout of the columns is per core (mgba: r0-r15, cpsr; gambatte: sp, hl, bc, de). */
+void romdev_trace_regs(int on);
+
+/* IRQ block: when set, the core's interrupt dispatch is gated off (deterministic
+ * stepping). The core reads romdev_irq_block in its IRQ path. */
+void romdev_irqblock_set(int on);
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * PART 2 - what the CORE calls (the hook surface). Implemented in romdev_debug.c;
+ *   the core invokes these from its bus taps + dispatch loop. This is the seam
+ *   that replaces every core's hand-rolled ROMDEV_WP_CHECK/RANGE/COV macros.
+ * ═════════════════════════════════════════════════════════════════════════ */
+
+/* Call on every memory WRITE the core performs.
+ *   addr   - the bus address written
+ *   oldv   - the value at addr BEFORE the write (only needed when a watchpoint
+ *            condition is armed; pass 0 if you don't have it cheaply and no cond
+ *            is set - romdev_wp_wants_old() tells you if it's needed)
+ *   newv   - the value being written
+ *   pc     - the live PC of the executing instruction
+ *   rom_off- active-bank ROM offset for `pc`, or 0xFFFFFFFF if N/A
+ * Drives the write-watchpoint + the range-watch (write side).
+ * RETURNS 1 if a write-watchpoint just HIT - the core should then take its register
+ * snapshot (fill romdev_snap_regs[] from its live CPU state + set romdev_snap_kind=3),
+ * since only the core knows its register layout. Returns 0 otherwise. */
+int romdev_on_write(unsigned addr, unsigned char oldv, unsigned char newv,
+                    unsigned pc, unsigned rom_off);
+
+/* Call on every memory READ. Drives the read-watchpoint + range-watch (read side).
+ * RETURNS 1 if a read-watchpoint just HIT - core takes its snapshot (kind=4). */
+int romdev_on_read(unsigned addr, unsigned char val, unsigned pc);
+
+/* Call once per instruction dispatch with the live PC. Drives coverage + the PC
+ * breakpoint/watchdog. Returns 1 if the CPU should FREEZE (a pcbreak/watchdog hit
+ * or single-step) - the core must then drain its cycle budget + return without
+ * executing, and stay frozen until the host clears the hit. Returns 0 to run normally.
+ * When it returns 1, romdev_pc_hit_kind() says WHY (for the snapshot kind). */
+int romdev_on_dispatch(unsigned pc);
+
+/* romdev_on_dispatch with the core's clock at this dispatch (any monotone-within-a-
+ * frame cycle count the core keeps; recorded by the instruction trace) and which CPU
+ * is dispatching (0 = main; see romdev_trace_set's cpumask). romdev_on_dispatch(pc)
+ * is romdev_on_dispatch_ex(pc, 0, 0). */
+int romdev_on_dispatch_ex(unsigned pc, unsigned clock, int cpu);
+
+/* A core that can report its registers per instruction registers a filler (called
+ * once per traced instruction, only while register columns are armed) and the
+ * column count. Call once at init. */
+void romdev_trace_provide_regs(void (*fn)(unsigned *dst), unsigned n);
+/* True while the trace records register columns: a core whose registers live in
+ * locals copies them out only then (the filler reads the copy). */
+int romdev_trace_wants_regs(void);
+
+/* After romdev_on_dispatch returns 1, the reason for the freeze (= the snapshot kind
+ * the core should take): 1 = pc-break/single-step, 2 = watchdog. 0 if no freeze. */
+int romdev_pc_hit_kind(void);
+
+/* True while the CPU is frozen on a pcbreak/watchdog hit (until the host clears it).
+ * A core checks this at the top of its run loop to STAY frozen - re-entering the loop
+ * would resume execution and drift the registers away from the hit instant. */
+int romdev_is_frozen(void);
+
+/* True when an armed write-watchpoint condition needs the pre-write value - lets a
+ * core skip the (sometimes costly) old-value read on the hot path when no cond is set. */
+int romdev_wp_wants_old(void);
+
+/* True when ANY debug feature is armed (watchpoint / read-watch / range / coverage /
+ * pc-break / single-step / watchdog / freeze / trace). A core with a stock tight run loop uses
+ * this to bypass all the per-instruction hooks when nothing is armed - zero overhead on
+ * the hot path. Equivalent to OR-ing every enabled flag. */
+int romdev_any_armed(void);
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * PART 3 - the snapshot buffer the core's per-CPU snapshot shim fills on a hit.
+ *   On a watchpoint/pcbreak hit the core calls its own romdev_<cpu>_snap(kind)
+ *   which writes romdev_snap_regs[0]=kind and [1..] = its registers, then the host
+ *   reads them via romdev_regsnap_get. Declared here so both sides agree on layout.
+ * ═════════════════════════════════════════════════════════════════════════ */
+extern unsigned romdev_snap_regs[ROMDEV_SNAP_REGS];
+extern int      romdev_snap_kind;
+
+/* Compact at-PC-break register snapshot, surfaced inline in pcbreak_get slots 6-10.
+ * A core with a tiny register file (e.g. 6502 A,X,Y,P,S) fills these on a pcbreak hit;
+ * leave them 0xFFFFFFFF (the init value) to report "not captured". Bigger CPUs use the
+ * full romdev_snap_regs[] via regsnap_get instead and can ignore this. */
+#define ROMDEV_PCBRK_REGS 5
+extern unsigned romdev_pcbrk_regs[ROMDEV_PCBRK_REGS];
+
+/* The core reads this in its IRQ dispatch (1 = block interrupts). */
+extern int romdev_irq_block;
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* ROMDEV_DEBUG_H */

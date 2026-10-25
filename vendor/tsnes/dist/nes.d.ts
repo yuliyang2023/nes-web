@@ -14,9 +14,12 @@ export declare type ControllerButton = 'a' | 'A' | 'b' | 'B' | 'select' | 'start
 export declare class Emulator {
     private system;
     private rom;
-    onsample: (sample: number) => void;
+    onsample: (sample: number[]) => void;
     onerror: (error: Error) => void;
-    load(data: ArrayBuffer): void;
+    load(data: ArrayBuffer): Promise<void>;
+    dispose(): void;
+    readonly fps: number;
+    readonly engine: string;
     reset(): void;
     buttonDown(player: 1 | 2, button: ControllerButton): void;
     buttonUp(player: 1 | 2, button: ControllerButton): void;

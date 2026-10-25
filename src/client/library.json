@@ -21,6 +21,6 @@
     "xson.js@0.1.0/dist/xson.min.js"
   ],
   "node_modules": {
-    "system": ["tsnes/dist/nes.js"]
+    "system": ["tsnes/dist/nes.js", "tsnes/dist/fceumm_libretro.wasm"]
   }
 }

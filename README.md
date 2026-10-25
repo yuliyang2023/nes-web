@@ -65,7 +65,7 @@ node scripts/smoke-dist.js
 node build-tools/node_modules/playwright/cli.js install chromium
 node scripts/smoke-dist.js --browser
 bash scripts/build-fpk.sh --dist "$PWD/dist"
-python3 scripts/verify-fpk.py dist/fpk/nes-web-0.1.3-x86.fpk
+python3 scripts/verify-fpk.py dist/fpk/nes-web-0.1.4-x86.fpk
 ```
 
 手动覆盖包版本可设置 `FPK_VERSION=0.1.2`，仅影响本次打包，不修改源码清单。
@@ -77,7 +77,7 @@ python3 scripts/verify-fpk.py dist/fpk/nes-web-0.1.3-x86.fpk
 docker build -f Dockerfile.runtime -t nes-web:current .
 ```
 
-产物位于 `dist/fpk/nes-web-0.1.3-x86.fpk`。`packaging/fnos` 包含应用清单、
+产物位于 `dist/fpk/nes-web-0.1.4-x86.fpk`。`packaging/fnos` 包含应用清单、
 权限、共享目录、桌面入口和启停脚本；图标可通过 `python3 scripts/create-fpk-icons.py` 重建。
 打包时会移除旧镜像中未使用的示例配置值，并拒绝直接打包未经适配的原生 Node 插件。
 
@@ -121,21 +121,30 @@ node scripts/build-navigation-css.js existing-app.css .build/client/app.light.cs
 docker build -f Dockerfile.light -t nes-web:light .
 ```
 
-The bundled `vendor/tsnes` core adds mapper 23 (VRC2/VRC4) support.
-Run `npm test`, or `NES_TEST_ROM=/path/to/game.nes npm test` for a ROM smoke test.
-Normal builds use this local core rather than downloading the original tsnes.
+当前源码构建使用 FCEUmm WebAssembly 核心，支持此次游戏库需要的 mapper
+19、23、25、85、90、192、198，以及 NES 2.0 头信息。0.1.4 同时修复
+带 trainer 的两份《曼哈顿计划》汉化版、泡泡龙启动崩溃和雪人兄弟灰屏。
+《超级贪吃蛇》的指定汉化 ROM 按内容校验值选择保留的旧核心。
+核心源码、许可证、补丁和重建说明见 [vendor/fceumm](vendor/fceumm/README.md)，
+FPK 和 Docker 中也包含对应源码与许可证。核心无需连接外部服务。
 
-To update an existing legacy container image without rebuilding the old frontend
-toolchain, tag its current image and run:
+更新到此版本需要完整重建前端和运行镜像（`npm run build:source` +
+`Dockerfile.runtime`）；新的 `Emulator.load()` 返回 Promise。
+`Dockerfile.core` 仅用于历史版本的 mapper 23 旧核心补丁。
+
+可在 NAS 上对实际游戏目录进行只读回归，每个 ROM 独立进程运行 1800 帧，
+模拟 Start、方向、A/B，并校验 HTTP 字节、视频、音频与异常：
 
 ```shell
-docker build -f Dockerfile.core --build-arg BASE_IMAGE=nes-web:previous -t nes-web:mapper23 .
+NES_AUDIT_ROM_DIR=/vol2/1000/data/game \
+NES_AUDIT_BASE=http://127.0.0.1:8180 \
+NES_AUDIT_OUT=/tmp/nes-rom-audit \
+node scripts/audit-roms.js
 ```
 
-Recreate the container with its existing port and volume settings. Keep the old
-container stopped for rollback. The core image updates the SystemJS URL and
-AppCache manifest so browsers can pick up the new core; existing open tabs may
-need a reload after their offline cache finishes updating.
+检查结果 JSON 和各阶段截图；这属于启动和短时运行测试，不代表全流程通关。
+重建 WASM 核心使用 `bash scripts/rebuild-fceumm.sh`，普通源码构建使用仓库中
+已编译且校验过的本地核心。
 
 ![Catalog][1]
 ![Multiplayer][2]

@@ -2,8 +2,8 @@
 # Pass --build-arg BASE_IMAGE=<tag of the current production image>.
 ARG BASE_IMAGE=nfam/nes-web
 FROM ${BASE_IMAGE}
-COPY vendor/tsnes/dist/nes.js /client/cdn/tsnes/dist/nes.js
+COPY vendor/tsnes/legacy/nes.js /client/cdn/tsnes/dist/nes.js
 # Also replace the old URL for clients with a cached SystemJS configuration.
-COPY vendor/tsnes/dist/nes.js /client/cdn/tsnes@0.0.2/dist/nes.min.js
+COPY vendor/tsnes/legacy/nes.js /client/cdn/tsnes@0.0.2/dist/nes.min.js
 COPY scripts/update-core-cache.js /tmp/update-core-cache.js
 RUN node /tmp/update-core-cache.js
