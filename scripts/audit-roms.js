@@ -183,7 +183,7 @@ async function parent() {
     }
     await Promise.all([ run(), run() ]);
     writeReport(results);
-    console.log("SUMMARY " + JSON.stringify(results.reduce((s, r) => (s[r.status] = (s[r.status] || 0) + 1, 
+    console.log("SUMMARY " + JSON.stringify(results.reduce((s, r) => (s[r.status] = (s[r.status] || 0) + 1,
     s), {})));
 }
 
