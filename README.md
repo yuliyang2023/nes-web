@@ -50,6 +50,9 @@ bash scripts/build-fpk.sh --image nes-web:gamepad-20261025
 
 云端使用 Node.js 24 和独立锁定的 `build-tools` 依赖，从源码构建所有前后端文件，
 不运行旧 Gulp/node-sass 工具链，也不调用在线 favicon 生成服务。官方 fnpack 下载有固定 SHA-256 校验。
+`0.1.3` 修复了 npm `.bin` 相对链接被复制成 GitHub Runner 绝对路径，导致飞牛报
+“解压 app.tgz 失败”的问题。构建会保留相对链接，并在打包前及最终包中检查绝对路径、
+目录外部链接、循环链接和失效链接；工作流包含对应回归测试。请使用 `0.1.3` 或更新版本。
 在本地复现源码构建：
 
 ```shell
@@ -62,13 +65,19 @@ node scripts/smoke-dist.js
 node build-tools/node_modules/playwright/cli.js install chromium
 node scripts/smoke-dist.js --browser
 bash scripts/build-fpk.sh --dist "$PWD/dist"
-python3 scripts/verify-fpk.py dist/fpk/nes-web-0.1.2-x86.fpk
+python3 scripts/verify-fpk.py dist/fpk/nes-web-0.1.3-x86.fpk
 ```
 
 手动覆盖包版本可设置 `FPK_VERSION=0.1.2`，仅影响本次打包，不修改源码清单。
 修改运行时 dependencies 后需同步 `build-tools/runtime/package.json` 并更新其 lockfile。
 
-产物位于 `dist/fpk/nes-web-0.1.2-x86.fpk`。`packaging/fnos` 包含应用清单、
+从源码生成 `dist` 后，也可构建当前 Node.js 24 Docker 运行镜像：
+
+```shell
+docker build -f Dockerfile.runtime -t nes-web:current .
+```
+
+产物位于 `dist/fpk/nes-web-0.1.3-x86.fpk`。`packaging/fnos` 包含应用清单、
 权限、共享目录、桌面入口和启停脚本；图标可通过 `python3 scripts/create-fpk-icons.py` 重建。
 打包时会移除旧镜像中未使用的示例配置值，并拒绝直接打包未经适配的原生 Node 插件。
 

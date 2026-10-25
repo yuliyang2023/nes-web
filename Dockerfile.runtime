@@ -1,0 +1,8 @@
+# Build the source first with npm run build:source.
+FROM node:24-alpine
+WORKDIR /
+COPY dist/server /server
+COPY dist/client /client
+RUN mkdir -p /data/roms /data/screen
+EXPOSE 8080
+CMD ["node", "/server/index.js"]

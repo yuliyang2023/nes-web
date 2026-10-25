@@ -133,7 +133,11 @@ async function main() {
         write(path.join(serverOut, relative), compile(file));
     }
     for (const name of ['client', 'database']) write(path.join(serverOut, 'config', name + '.json'), '{}\n');
-    fs.cpSync(path.join(runtime, 'node_modules'), path.join(serverOut, 'node_modules'), { recursive: true });
+    // Preserve npm's relative .bin links; fs.cp otherwise rewrites their targets
+    // to absolute build-machine paths, which fnOS refuses to extract.
+    fs.cpSync(path.join(runtime, 'node_modules'), path.join(serverOut, 'node_modules'), {
+        recursive: true, verbatimSymlinks: true
+    });
     fs.copyFileSync(path.join(runtime, 'package.json'), path.join(serverOut, 'package.json'));
     console.log('Built dist/client and dist/server from source');
 }

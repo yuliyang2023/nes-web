@@ -40,6 +40,26 @@ else
     echo 'Source: compiled dist directory' > "$STAGE/app/BUILD-INFO"
 fi
 [ -d "$STAGE/app/server/node_modules" ]
+# fnOS rejects links to build-host paths while unpacking app.tgz. Check every
+# link, including parent-link chains, before fnpack can produce an installer.
+python3 - "$STAGE/app" <<'PY'
+import os
+import sys
+from pathlib import Path
+root = Path(sys.argv[1]).resolve()
+for directory, dirs, files in os.walk(root, followlinks=False):
+    for name in dirs + files:
+        entry = Path(directory) / name
+        if not entry.is_symlink():
+            continue
+        target = os.readlink(entry)
+        try:
+            resolved = entry.resolve(strict=True)
+        except (OSError, RuntimeError) as error:
+            raise SystemExit(f'Invalid package symlink: {entry.relative_to(root)}: {error}')
+        if os.path.isabs(target) or not resolved.is_relative_to(root):
+            raise SystemExit(f'Unsafe package symlink: {entry.relative_to(root)} -> {target}')
+PY
 if find "$STAGE/app/server" -name '*.node' -print -quit | grep -q .; then
     echo 'Native addons require a Linux fnOS rebuild; refusing to package them.' >&2
     exit 1

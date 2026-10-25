@@ -60,7 +60,9 @@ jobs:
       - name: Run regression tests
         env:
           NODE_PATH: ${{ github.workspace }}/build-tools/node_modules
-        run: npm test
+        run: |
+          npm test
+          python3 test/archive-links.test.py
 
       - name: Build from source and smoke test
         run: |
