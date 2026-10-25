@@ -9,6 +9,7 @@ import { Configuration } from '../../core/configuration';
 })
 export class LanguageComponent implements OnInit, OnDestroy {
     private subscriptions: Unsubscribable[] = [];
+    private languages = ['en', 'vi', 'zh-CN'];
 
     get lang(): string {
         return this.configuration.lang || 'en';
@@ -36,24 +37,31 @@ export class LanguageComponent implements OnInit, OnDestroy {
         this.router.navigateByUrl('/settings');
     }
 
+    private cycleLanguage(direction: number) {
+        const index = this.languages.indexOf(this.lang);
+        this.configuration.lang = this.languages[
+            (index + direction + this.languages.length) % this.languages.length
+        ];
+    }
+
     buttonDown(event: ButtonEvent): boolean {
         switch (event.button) {
         case 'tab':
-            this.configuration.lang = this.lang == 'en' ? 'vi' : 'en';
+            this.cycleLanguage(1);
             return true;
         case 'ls1':
             this.router.navigateByUrl('/settings');
             return true;
         case 'l':
         case 'u':
-            this.configuration.lang = 'en';
+            this.cycleLanguage(-1);
             return true;
         case 'r':
         case 'd':
-            this.configuration.lang = 'vi';
+            this.cycleLanguage(1);
             return true;
         case 'select':
-            this.configuration.lang = this.lang == 'en' ? 'vi' : 'en';
+            this.cycleLanguage(1);
             return true;
         case 'start':
             this.router.navigateByUrl('/settings');

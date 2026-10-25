@@ -1,0 +1,5 @@
+ARG BASE_IMAGE=nes-web:light-20261025
+FROM ${BASE_IMAGE}
+COPY .build/client/app.gamepad.js /client/assets/app.js
+COPY scripts/update-core-cache.js /tmp/update-core-cache.js
+RUN node /tmp/update-core-cache.js

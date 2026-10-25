@@ -1,0 +1,8 @@
+{
+  "name": "tsnes",
+  "version": "0.0.2-mapper23.1",
+  "description": "tsnes 0.0.2 with nes-web mapper 23 support",
+  "main": "dist/nes.js",
+  "types": "dist/nes.d.ts",
+  "license": "GPL-3.0"
+}

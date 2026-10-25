@@ -1,5 +1,11 @@
 export const LANG_VI_NAME = 'vi';
 export const LANG_VI_TRANS = {
+    'NES Games': 'Trò chơi NES',
+    'Key Mapping': 'Cài đặt phím',
+    'Language Settings': 'Cài đặt ngôn ngữ',
+    'Back': 'Quay lại',
+    'Fullscreen': 'Toàn màn hình',
+    'Connect a USB gamepad to this computer, then press a button to activate it. Keyboard controls can be changed in Key Mapping.': 'Cắm tay cầm USB vào máy tính này và nhấn một nút để kích hoạt. Có thể đổi phím bàn phím trong Cài đặt phím.',
     'Abandon': 'Rời bỏ',
     'Abandoned': 'Rời bỏ',
     'Are you sure to abandon the game?': 'Bạn có chắc chắn muốn bỏ game?',

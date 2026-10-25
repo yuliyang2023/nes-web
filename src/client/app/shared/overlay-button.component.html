@@ -1,9 +1,9 @@
 <div class="overlay-{{position}} overlay-button">
-    <a [routerLink]="routerLink" class="btn btn-default btn-lg" *ngIf="routerLink">
+    <a [routerLink]="routerLink" [attr.aria-label]="label | translate" [title]="label | translate" class="btn btn-default btn-lg" *ngIf="routerLink">
         <i *ngIf="icon" class="icon icon-{{icon}}"></i>
         <ng-content></ng-content>
     </a>
-    <a class="btn btn-default btn-lg" *ngIf="!routerLink">
+    <a role="button" tabindex="0" (keydown.enter)="$event.stopPropagation(); $event.target.click()" (keydown.space)="$event.preventDefault(); $event.stopPropagation(); $event.target.click()" [attr.aria-label]="label | translate" [title]="label | translate" class="btn btn-default btn-lg" *ngIf="!routerLink">
         <i *ngIf="icon" class="icon icon-{{icon}}"></i>
         <ng-content></ng-content>
     </a>

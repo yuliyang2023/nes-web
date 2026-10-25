@@ -18,7 +18,9 @@
     "@angular/platform-browser-dynamic@5.0.0/bundles/platform-browser-dynamic.umd.min.js",
     "@angular/router@5.0.0/bundles/router.umd.min.js",
     "pako@1.0.5/dist/pako.min.js",
-    "tsnes@0.0.2/dist/nes.min.js",
     "xson.js@0.1.0/dist/xson.min.js"
-  ]
+  ],
+  "node_modules": {
+    "system": ["tsnes/dist/nes.js"]
+  }
 }

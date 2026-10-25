@@ -37,16 +37,17 @@
     @extend %overlay-button;
     .btn {
         @extend %overlay-button;
-        background-color: transparent;
-        border-color: $box-border-color;
+        background-color: white;
+        border-color: #b8c9df;
         color: $box-content-color;
         padding: 3px;
         i.icon {
             width: 45px;
             height: 45px;
+            filter: none;
         }
         &:hover {
-            background-color: #202020;
+            background-color: #eff6ff;
         }
     }
 }

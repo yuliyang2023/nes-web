@@ -1,0 +1,6 @@
+# Build the overlay first with scripts/build-locale-overlay.js.
+ARG BASE_IMAGE=nes-web:mapper23-20261025
+FROM ${BASE_IMAGE}
+COPY .build/client/app.zh.js /client/assets/app.js
+COPY scripts/update-core-cache.js /tmp/update-core-cache.js
+RUN node /tmp/update-core-cache.js

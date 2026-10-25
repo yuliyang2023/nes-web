@@ -1,16 +1,22 @@
 <div class="container">
+    <header class="home-header">
+        <div class="home-heading">
+            <h1>{{ 'NES Games' | translate }}</h1>
+            <nav class="home-navigation" (keydown)="$event.stopPropagation()" (keyup)="$event.stopPropagation()" [attr.aria-label]="'Settings' | translate">
+                <a routerLink="/settings">{{ 'Settings' | translate }}</a>
+                <a routerLink="/settings/controller">{{ 'Key Mapping' | translate }}</a>
+                <a routerLink="/settings/language">{{ 'Language Settings' | translate }}</a>
+            </nav>
+        </div>
+        <p class="home-help">{{ 'Connect a USB gamepad to this computer, then press a button to activate it. Keyboard controls can be changed in Key Mapping.' | translate }}</p>
+    </header>
     <div class="row" *ngIf="!games">
         <loading></loading>
     </div>
-    <div class="row" *ngIf="games" style="padding-top: 50px">
+    <div class="row" *ngIf="games" style="padding-top: 24px">
         <div *ngIf="games.length == 0" class="text-center text-muted">{{ 'No games available' | translate }}.</div>
         <div id="cover-{{index}}" class="col-lg-3 col-md-4 col-sm-6 col-xs-12 text-center" *ngFor="let game of games; let index = index">
             <game-cover [game]="game" [number]="index + 1" [selected]="selectedIndex == index"></game-cover>
         </div>
-    </div>
-</div>
-<div class="container">
-    <div class="row">
-        <overlay-button position="top-left" icon="gear" routerLink="/settings"></overlay-button>
     </div>
 </div>

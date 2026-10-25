@@ -9,6 +9,7 @@ import { Unsubscribable } from '../core/unsubscribable';
 
 @Component({
     templateUrl: 'game-list.component.html',
+    styleUrls: ['game-list.component.css'],
 })
 export class GameListComponent implements OnInit, OnDestroy, AfterViewChecked {
     private subscriptions: Unsubscribable[] = [];
@@ -66,16 +67,7 @@ export class GameListComponent implements OnInit, OnDestroy, AfterViewChecked {
     buttonDown(event: ButtonEvent): boolean {
         switch (event.button) {
         case 'tab':
-            if (this.games) {
-                if (this.selectedIndex < this.games.length - 1) {
-                    this.selectedIndex += 1;
-                }
-                else {
-                    this.selectedIndex = 0;
-                }
-                this.moveToViewIfRequired();
-                return true;
-            }
+            // Let the browser focus the visible settings and game links.
             return false;
         case 'ls1':
             this.router.navigateByUrl('/settings');

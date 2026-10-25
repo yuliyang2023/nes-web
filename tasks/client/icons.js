@@ -35,7 +35,7 @@ gulp.task('icons', [
         name = before + 'i.icon-' + name.trim();
         sb.push(name +
             ' { background-image: url(\'data:image/svg+xml;charset=utf-8,'+
-            iconContents[index] +
+            encodeURIComponent(iconContents[index]).replace(/'/g, '%27') +
             '\'); }');
     });
     return file('icons.css', sb.join('\n'), { src: true })

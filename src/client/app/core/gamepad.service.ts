@@ -75,9 +75,20 @@ export class GamepadService {
     }
 
     private checkGamepad(pad: Gamepad.Gamepad, state: GamepadState) {
+        // Standard USB controllers expose the D-pad as buttons 12-15.
+        // Merge it with the left stick before emitting events, so releasing
+        // one input does not release a direction still held by the other.
+        const pressed = (index: number) => !!(pad.buttons[index] && pad.buttons[index].pressed);
+        const left = pad.axes[0] < -0.5 || pressed(14);
+        const right = pad.axes[0] > 0.5 || pressed(15);
+        const up = pad.axes[1] < -0.5 || pressed(12);
+        const down = pad.axes[1] > 0.5 || pressed(13);
+        const horizontal = left === right ? 0 : left ? -1 : 1;
+        const vertical = up === down ? 0 : up ? -1 : 1;
+
         // left - right
         {
-            if (pad.axes[0] < -0.5) {
+            if (horizontal < 0) {
                 if (state.axis0) {
                     if (state.axis0 == -1) {
                         if (Date.now() - state.axis0Time >= axisDelay) {
@@ -103,7 +114,7 @@ export class GamepadService {
                     });
                 }
             }
-            else if (pad.axes[0] > 0.5) {
+            else if (horizontal > 0) {
                 if (state.axis0) {
                     if (state.axis0 == -1) {
                         state.axis0 = 0;
@@ -141,7 +152,7 @@ export class GamepadService {
 
         // up - down
         {
-            if (pad.axes[1] < -0.5) {
+            if (vertical < 0) {
                 if (state.axis1) {
                     if (state.axis1 == -1) {
                         if (Date.now() - state.axis1Time >= axisDelay) {
@@ -167,7 +178,7 @@ export class GamepadService {
                     });
                 }
             }
-            else if (pad.axes[1] > 0.5) {
+            else if (vertical > 0) {
                 if (state.axis1) {
                     if (state.axis1 == -1) {
                         state.axis1 = 0;

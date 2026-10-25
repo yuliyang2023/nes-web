@@ -72,11 +72,12 @@
     "ts-node": "^3.3.0",
     "tslint": "^5.9.1",
     "tslint-eslint-rules": "^5.1.0",
-    "tsnes": "0.0.2",
+    "tsnes": "file:vendor/tsnes",
     "typescript": "^2.5.3",
     "zone.js": "^0.8.18"
   },
   "scripts": {
+    "test": "node --test test/*.test.js",
     "tslint": "npm run tslint-server && npm run tslint-client",
     "tslint-server": "node_modules/.bin/tslint -c tslint.json --project src/server",
     "tslint-client": "node_modules/.bin/tslint -c tslint.json --project src/client",

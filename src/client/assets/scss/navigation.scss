@@ -1,0 +1,79 @@
+/* Shared light theme, also appended when updating a legacy image. */
+html { color-scheme: light; }
+body {
+    background-color: #f5f7fb;
+}
+body, .game-title, connection-status {
+    color: #334155;
+}
+.metro, .metro-button, .game-cover {
+    color: #334155;
+    background-color: #fff;
+    border-color: #cbd5e1;
+}
+.metro:hover, .metro-button:hover, .game-cover:hover {
+    color: #1d4ed8;
+    border-color: #2563eb;
+}
+.selected .metro, .metro-button.selected, .selected .metro-button, .selected .game-cover {
+    color: #1d4ed8;
+    background-color: #dbeafe;
+    border-color: #2563eb;
+    animation: none;
+    -webkit-animation: none;
+}
+.game-cover .image {
+    border-color: #cbd5e1;
+    background-color: #eff3f8;
+}
+.game-cover:hover .image, .selected .game-cover .image {
+    border-color: #93b4e8;
+}
+.text-info, .modal .modal-body {
+    color: #334155;
+}
+.text-muted { color: #64748b; }
+.modal .modal-content {
+    background-color: #fff;
+    border: 1px solid #cbd5e1;
+    box-shadow: 0 12px 40px rgba(15, 23, 42, .16);
+}
+.charbox {
+    color: #334155;
+    background-color: #fff;
+    border-color: #cbd5e1;
+}
+connection-status .label-status {
+    color: #1e40af;
+    background-color: #dbeafe;
+}
+.overlay-player .overlay-player-content,
+.overlay-player .overlay-player-content span {
+    color: #334155;
+    background-color: #fff;
+    border-color: #cbd5e1;
+}
+.overlay-button .btn {
+    color: #334155;
+    background-color: #fff;
+    border-color: #b8c9df;
+}
+.overlay-button .btn:hover {
+    background-color: #eff6ff;
+    border-color: #2563eb;
+}
+.overlay-button .btn i.icon {
+    filter: none;
+}
+.overlay-button .btn:focus {
+    outline: 3px solid #2563eb;
+    outline-offset: 2px;
+}
+@keyframes box-blink {
+    0%, 100% { border-color: #2563eb; background-color: #dbeafe; }
+    50% { border-color: #93b4e8; background-color: #eff6ff; }
+}
+@-webkit-keyframes box-blink {
+    0%, 100% { border-color: #2563eb; background-color: #dbeafe; }
+    50% { border-color: #93b4e8; background-color: #eff6ff; }
+}

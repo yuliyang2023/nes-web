@@ -1,0 +1,6 @@
+ARG BASE_IMAGE=nes-web:mapper23-zh-20261025
+FROM ${BASE_IMAGE}
+COPY .build/client/app.navigation.js /client/assets/app.js
+COPY .build/client/app.navigation.css /client/assets/app.css
+COPY scripts/update-core-cache.js /tmp/update-core-cache.js
+RUN node /tmp/update-core-cache.js

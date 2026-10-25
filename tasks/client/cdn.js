@@ -40,7 +40,7 @@ function cdnGroup(paths, from, bySystem) {
         // Download to .build/cdn/
         if (from == 'node_modules') {
             gulp.task(taskName, ['clean:cdn'], function() {
-                gulp.src(util.workspace('node_modules/'+path))
+                return gulp.src(util.workspace('node_modules/'+path))
                 .pipe(rename(path))
                 .pipe(gulp.dest(util.workspace(localDir)));
             });
