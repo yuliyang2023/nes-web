@@ -9,6 +9,11 @@
             </nav>
         </div>
         <p class="home-help">{{ 'Connect a USB gamepad to this computer, then press a button to activate it. Keyboard controls can be changed in Key Mapping.' | translate }}</p>
+        <div class="library-actions" (keydown)="$event.stopPropagation()" (keyup)="$event.stopPropagation()">
+            <button class="btn btn-primary" type="button" (click)="reload()" [disabled]="scanning">{{ (scanning ? 'Scanning...' : 'Reload ROMs') | translate }}</button>
+            <span role="status" aria-live="polite" [class.text-danger]="scanFailed">{{ scanMessage | translate }}</span>
+            <p class="home-help">{{ 'Use fnOS App Center configuration to select ROM and cover directories. After adding or deleting games, click Reload ROMs.' | translate }}</p>
+        </div>
     </header>
     <div class="row" *ngIf="!games">
         <loading></loading>

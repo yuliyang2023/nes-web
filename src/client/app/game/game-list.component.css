@@ -4,6 +4,8 @@
     border-bottom: 1px solid #cbd5e1;
     color: #0f172a;
 }
+.library-actions { margin-top: 16px; }
+.library-actions button { min-height: 44px; margin-right: 12px; }
 .home-heading {
     display: flex;
     align-items: center;

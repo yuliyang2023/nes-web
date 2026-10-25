@@ -15,6 +15,9 @@ export class GameListComponent implements OnInit, OnDestroy, AfterViewChecked {
     private subscriptions: Unsubscribable[] = [];
 
     games: Game[] = null;
+    scanning = false;
+    scanMessage = '';
+    scanFailed = false;
     selectedIndex: number = null;
     private movedToSelected = false;
 
@@ -51,6 +54,24 @@ export class GameListComponent implements OnInit, OnDestroy, AfterViewChecked {
         this.subscriptions.push(
             this.gamepadService.on(ButtonEventType.buttonDown, this.buttonDown.bind(this))
         );
+    }
+
+    reload() {
+        if (this.scanning) return;
+        this.scanning = true;
+        this.scanMessage = '';
+        this.scanFailed = false;
+        this.gameService.reload().then(games => {
+            this.games = games;
+            this.selectedIndex = games.length ? 0 : null;
+            this.movedToSelected = false;
+            this.scanning = false;
+            this.scanMessage = 'Scan complete';
+        }, () => {
+            this.scanning = false;
+            this.scanFailed = true;
+            this.scanMessage = 'Cannot scan ROM directory. Check the NAS path and application permissions.';
+        });
     }
 
     ngOnDestroy() {
@@ -107,7 +128,7 @@ export class GameListComponent implements OnInit, OnDestroy, AfterViewChecked {
             }
             break;
         case 'start':
-            if (this.games && this.selectedIndex < this.games.length - 1) {
+            if (this.games && this.selectedIndex !== null && this.selectedIndex >= 0 && this.selectedIndex < this.games.length) {
                 let game = this.games[this.selectedIndex];
                 this.router.navigateByUrl('/'+encodeURIComponent(game.name));
                 return true;

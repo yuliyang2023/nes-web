@@ -34,7 +34,8 @@ process.title = 'nes';
 injection.get<LogService>('logService').info('Timezone :'+injection.get<Configuration>('configuration').logTZ);
 
 injection.get<GameService>('gameService').scan()
-.then(() => injection.get<Server>('server').listen())
 .catch((error: Error) => {
-    console.log(error);
-});
+    injection.get<LogService>('logService').error('Initial ROM scan failed; use Reload after fixing directory permissions.', error);
+})
+.then(() => injection.get<Server>('server').listen())
+.catch((error: Error) => { console.log(error); process.exitCode = 1; });

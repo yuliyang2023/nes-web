@@ -23,6 +23,14 @@ export class GameService {
         }
     }
 
+    reload(): Promise<Game[]> {
+        return this.http.post('/api/games/reload', {})
+            .toPromise().then(res => {
+                this.games = res.json() as Game[];
+                return this.games;
+            });
+    }
+
     getGame(name: string): Promise<Game> {
         if (!this.games) {
             return this.http.request('/api/games/')

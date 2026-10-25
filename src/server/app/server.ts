@@ -10,6 +10,7 @@ import LogService from './core/log.service';
 import { relative } from 'path';
 import SocketController from './socket/socket.controller';
 import GameController from './game/game.controller';
+import GameService from './game/game.service';
 
 export interface ExpressWebSocket {
     readonly app: Express.Application
@@ -27,13 +28,15 @@ export default class Server {
         'configuration',
         'logService',
         'gameController',
-        'socketController'
+        'socketController',
+        'gameService'
     ];
     constructor(
         private configuration: Configuration,
         private logService: LogService,
         gameController: GameController,
-        socketController: SocketController
+        socketController: SocketController,
+        gameService: GameService
     ) {
         this.app = Express();
         this.httpServer = http.createServer(this.app);
@@ -41,8 +44,8 @@ export default class Server {
 
         this.app.use('/', Express.static(__dirname+'/../../client/'));
         this.app.use('/api/games', gameController.router());
-        this.app.use('/roms/', Express.static(__dirname+'/../../data/roms/'));
-        this.app.use('/screen/', Express.static(__dirname+'/../../data/screen/'));
+        this.app.use('/roms/', Express.static(gameService.romDirectory, { maxAge: 0 }));
+        this.app.use('/screen/', Express.static(gameService.screenDirectory, { maxAge: 0 }));
         this.app.use(bodyParser.json());
         this.app.use('/.socket', socketController.router());
         this.app.get('/settings', this.index('./'));

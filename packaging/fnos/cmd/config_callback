@@ -1,5 +1,25 @@
 #!/bin/bash
-
-### This script is called after the user change environment variables in application setting page.
-
-exit 0
+set -eu
+: "${TRIM_PKGETC:?}"
+: "${TRIM_APPDEST:?}"
+roms="${wizard_rom_dir:-}"
+screen="${wizard_screen_dir:-}"
+for directory in "$roms" "$screen"; do
+    if [ -n "$directory" ]; then
+        case "$directory" in /*) ;; *) echo '请填写 NAS 绝对路径。' >&2; exit 1 ;; esac
+        case "$directory" in *$'\n'*|*$'\r'*) echo '目录不能包含换行。' >&2; exit 1 ;; esac
+        [ -d "$directory" ] && [ -r "$directory" ] && [ -x "$directory" ] || {
+            echo '目录不存在或应用无权读取，请先在飞牛应用设置中授权目录。' >&2; exit 1;
+        }
+    fi
+done
+mkdir -p "$TRIM_PKGETC"
+umask 077
+printf '%s\n%s\n' "$roms" "$screen" > "$TRIM_PKGETC/directories.tmp"
+mv "$TRIM_PKGETC/directories.tmp" "$TRIM_PKGETC/directories"
+# Apply the paths immediately when the app is running.
+main="$(dirname "$0")/main"
+if "$main" status; then
+    "$main" stop
+    "$main" start
+fi

@@ -1,5 +1,10 @@
 export const LANG_ZH_NAME = 'zh-CN';
 export const LANG_ZH_TRANS = {
+    'Reload ROMs': '重新扫描 ROM',
+    'Scanning...': '正在扫描…',
+    'Scan complete': '扫描完成',
+    'Cannot scan ROM directory. Check the NAS path and application permissions.': '无法扫描 ROM 目录，请检查 NAS 路径和应用访问权限。',
+    'Use fnOS App Center configuration to select ROM and cover directories. After adding or deleting games, click Reload ROMs.': '可在飞牛应用中心的配置中指定 ROM 和封面目录。添加或删除游戏后，点击“重新扫描 ROM”即可更新。',
     'NES Games': 'NES 游戏厅',
     'Key Mapping': '按键设置',
     'Language Settings': '语言设置',

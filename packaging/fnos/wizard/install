@@ -4,7 +4,7 @@
     "items": [
       {
         "type": "tips",
-        "helpText": "应用使用官方 Node.js v24 运行时，访问端口为 8180。安装后从桌面图标打开。在文件管理的“应用文件 / nes-web / roms”中放入 .nes 文件，在 screen 中放入同名 .png 封面；导入后重启本应用。安装包不包含游戏 ROM，也不会改动已有 Docker 容器的数据。"
+        "helpText": "应用使用官方 Node.js v24，访问端口为 8180。默认 ROM 位于“应用文件 / nes-web / roms”，同名 .png 封面位于 screen。也可在应用设置中授权其他 NAS 目录，再通过配置指定路径。导入或删除游戏后在主页点击“重新扫描 ROM”，无需重启。安装包不包含 ROM，不改动已有 Docker 数据。"
       }
     ]
   }

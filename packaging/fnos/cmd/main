@@ -36,6 +36,13 @@ prepare_data() {
             */screen) screen="${shared%/}" ;;
         esac
     done
+    local settings="${TRIM_PKGETC:-$VAR_DIR}/directories"
+    if [ -r "$settings" ]; then
+        local configured_roms configured_screen
+        { IFS= read -r configured_roms; IFS= read -r configured_screen; } < "$settings"
+        [ -z "$configured_roms" ] || roms="$configured_roms"
+        [ -z "$configured_screen" ] || screen="$configured_screen"
+    fi
     if [ ! -d "$roms" ] || [ ! -d "$screen" ]; then
         echo 'ROM/封面共享目录不可用，请检查飞牛应用资源。' >> "$LOG_FILE"
         return 1
@@ -43,6 +50,7 @@ prepare_data() {
     mkdir -p "$APP_DIR/data" || return 1
     ln -sfnT "$roms" "$APP_DIR/data/roms" || return 1
     ln -sfnT "$screen" "$APP_DIR/data/screen" || return 1
+    export NES_ROM_DIR="$roms" NES_SCREEN_DIR="$screen"
 }
 
 case "${1:-}" in

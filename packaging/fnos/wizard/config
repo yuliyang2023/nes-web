@@ -1,0 +1,10 @@
+[
+  {
+    "stepTitle": "游戏目录",
+    "items": [
+      { "type": "tips", "helpText": "使用 NAS 其他目录前，请在应用设置的授权目录中授予本应用访问权限。填写 NAS 绝对路径，例如 /vol1/1000/Games/roms。留空使用应用文件中的默认目录。保存配置会重启本应用；之后增删 ROM 只需在网页点击“重新扫描 ROM”，无需重启。" },
+      { "type": "text", "field": "wizard_rom_dir", "label": "ROM 目录（可留空）", "initValue": "" },
+      { "type": "text", "field": "wizard_screen_dir", "label": "封面目录（可留空）", "initValue": "" }
+    ]
+  }
+]

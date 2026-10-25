@@ -12,8 +12,23 @@ Multiplayer Online Classic NES Games on Web Browser, using [`WebRTC`](https://we
 已有 Docker 版继续使用原来的 8080 端口，两者独立运行。
 
 游戏文件放在 **文件管理 → 应用文件 → nes-web → roms**，同名 PNG 封面放在 **screen**。
-导入或删除 ROM 后重启原生应用，重新扫描列表。安装包不含 ROM，也不会自动迁移 Docker 数据。
+导入或删除 ROM 后，点击网页主页“重新扫描 ROM”，无需重启。安装包不含 ROM，也不会自动迁移 Docker 数据。
 应用使用专用非 root 用户运行；生命周期脚本不会删除 ROM/封面共享目录。
+
+### 使用 NAS 其他目录与重新扫描
+
+在飞牛应用中心找到 **NES 游戏厅 → 设置 → 授权目录**，授权要读取的游戏和封面目录。
+然后打开应用的 **配置**，填写 NAS 的绝对路径（例如 `/vol1/1000/Games/roms`），
+ROM/封面路径均可留空，留空使用默认应用共享目录。保存会重启服务以应用目录配置；
+配置保存在应用配置目录中，升级保留。应用只读取游戏与封面，不复制或删除源目录文件。
+
+之后添加或删除 `.nes` 文件，只需点击主页 **重新扫描 ROM**。扫描会替换游戏列表，
+删除的游戏会消失，空目录会清空列表，重复扫描不会产生重复条目。
+目录不可读时显示错误并保留上次成功列表；修正路径或权限后可再次扫描。
+目前扫描目录的第一层，不递归扫描子文件夹；ROM 扩展名使用小写 `.nes`。
+
+Docker/普通 Node 部署可通过 `NES_ROM_DIR` 和 `NES_SCREEN_DIR` 环境变量设置进程可访问的路径。
+Docker 需要先把 NAS 目录挂载到容器。网页不接受任意文件系统路径修改；目录由部署配置管理。
 
 在安装了官方 [fnpack](https://developer.fnnas.com/docs/cli/fnpack) 的 Linux 主机上打包：
 
@@ -47,13 +62,13 @@ node scripts/smoke-dist.js
 node build-tools/node_modules/playwright/cli.js install chromium
 node scripts/smoke-dist.js --browser
 bash scripts/build-fpk.sh --dist "$PWD/dist"
-python3 scripts/verify-fpk.py dist/fpk/nes-web-0.1.1-x86.fpk
+python3 scripts/verify-fpk.py dist/fpk/nes-web-0.1.2-x86.fpk
 ```
 
 手动覆盖包版本可设置 `FPK_VERSION=0.1.2`，仅影响本次打包，不修改源码清单。
 修改运行时 dependencies 后需同步 `build-tools/runtime/package.json` 并更新其 lockfile。
 
-产物位于 `dist/fpk/nes-web-0.1.1-x86.fpk`。`packaging/fnos` 包含应用清单、
+产物位于 `dist/fpk/nes-web-0.1.2-x86.fpk`。`packaging/fnos` 包含应用清单、
 权限、共享目录、桌面入口和启停脚本；图标可通过 `python3 scripts/create-fpk-icons.py` 重建。
 打包时会移除旧镜像中未使用的示例配置值，并拒绝直接打包未经适配的原生 Node 插件。
 

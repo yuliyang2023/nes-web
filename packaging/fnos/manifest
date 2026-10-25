@@ -1,5 +1,5 @@
 appname=nes-web
-version=0.1.1
+version=0.1.2
 display_name=NES 游戏厅
 desc=在浏览器中运行 NES 游戏，支持 USB 手柄、键盘映射、中文界面和多人联机。请自行提供合法持有的 ROM。
 platform=x86
@@ -14,4 +14,4 @@ desktop_applaunchname=nes-web.main
 service_port=8180
 checkport=true
 ctl_stop=true
-disable_authorization_path=true
+disable_authorization_path=false

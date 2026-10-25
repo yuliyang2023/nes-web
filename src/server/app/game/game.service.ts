@@ -1,61 +1,45 @@
-import * as fs from "fs";
-import LogService from "../core/log.service";
-import { Game } from "./game.model";
+import * as fs from 'fs';
+import * as path from 'path';
+import LogService from '../core/log.service';
+import { Game } from './game.model';
 
 export default class GameService {
     games: Game[] = [];
+    private scanning: Promise<Game[]>;
+    readonly romDirectory = path.resolve(process.env.NES_ROM_DIR || __dirname + '/../../../data/roms');
+    readonly screenDirectory = path.resolve(process.env.NES_SCREEN_DIR || __dirname + '/../../../data/screen');
 
-    static $inject = [
-        'logService'
-    ];
-    constructor(
-        private logService: LogService
-    ) {
-    }
+    static $inject = ['logService'];
+    constructor(private logService: LogService) { }
 
-    scan(): Promise<any> {
-        return new Promise<any>((resolve, reject) => {
-            const dataDir = __dirname + "/../../../data";
-            fs.readdir(dataDir + "/roms", (error, files) => {
-                if (error) {
-                    reject(error);
-                    return
-                }
-                let names: string[] = [];
-                for (let file of files) {
-                    if (file.endsWith(".nes")) {
-                        names.push(file.substring(0, file.length - 4).trim());
-                    }
-                }
-                if (names.length == 0) {
-                    resolve();
-                    return;
-                }
-                fs.readFile(dataDir + "/roms/singleplayer.txt", "utf8", (error, content) => {
-                    let mog: string[] = error ? [] : content.split('\n').map(name => name.trim());
-                    names.sort().forEach(name => {
-                        this.games.push({
-                            name: name,
-                            multiplayer: mog.indexOf(name) < 0
-                        });
+    scan(): Promise<Game[]> {
+        if (this.scanning) return this.scanning;
+        this.scanning = new Promise<Game[]>((resolve, reject) => {
+            fs.readdir(this.romDirectory, (error, files) => {
+                if (error) { reject(error); return; }
+                const candidates = files.filter(file => file.endsWith('.nes'));
+                Promise.all(candidates.map(file => new Promise<string>((ok, fail) => {
+                    fs.stat(path.join(this.romDirectory, file), (statError, stat) => {
+                        if (statError) { fail(statError); return; }
+                        ok(stat.isFile() ? file.slice(0, -4) : null);
                     });
-                    this.logService.info("Games:\n" + description(this.games))
-                    resolve();
-                });
+                }))).then(names => {
+                    fs.readFile(path.join(this.romDirectory, 'singleplayer.txt'), 'utf8', (readError, content) => {
+                        if (readError && readError.code !== 'ENOENT') { reject(readError); return; }
+                        const singleplayer = readError ? [] : content.split('\n').map(name => name.trim());
+                        const games = names.filter(name => name !== null).sort().map(name => ({
+                            name, multiplayer: singleplayer.indexOf(name) < 0
+                        }));
+                        // Replace atomically: deletions and empty directories must clear the list.
+                        this.games = games;
+                        this.logService.info('ROM scan complete: ' + games.length + ' games');
+                        resolve(games);
+                    });
+                }, reject);
             });
         });
+        const pending = this.scanning;
+        pending.then(() => { this.scanning = null; }, () => { this.scanning = null; });
+        return pending;
     }
-}
-
-function description(games: Game[]): string {
-    return "" +
-        "+-------------+-------------------\r\n" +
-        "| Multiplayer | Title             \r\n" +
-        "+-------------+-------------------\r\n" +
-    games.map(game => {
-        return (game.multiplayer ?
-        "|      *      | " :
-        "|             | ") + game.name;
-    }).join("\r\n") +
-        "\r\n+-------------+-------------------\r\n";
 }

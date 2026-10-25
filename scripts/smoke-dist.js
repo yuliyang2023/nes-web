@@ -2,6 +2,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const net = require('node:net');
+const os = require('node:os');
 const crypto = require('node:crypto');
 const assert = require('node:assert/strict');
 const { spawn } = require('node:child_process');
@@ -16,8 +17,9 @@ async function main() {
     const port = listener.address().port;
     await new Promise(resolve => listener.close(resolve));
     const name = 'ci-smoke-' + crypto.randomUUID();
-    const romFile = path.join(root, 'data/roms', name + '.nes');
-    const coverFile = path.join(root, 'data/screen', name + '.png');
+    const external = fs.mkdtempSync(path.join(os.tmpdir(), 'nes-external-library-'));
+    const romFile = path.join(external, 'roms', name + '.nes');
+    const coverFile = path.join(external, 'screen', name + '.png');
     fs.mkdirSync(path.dirname(romFile), { recursive: true });
     fs.mkdirSync(path.dirname(coverFile), { recursive: true });
     const rom = Buffer.alloc(16 + 16384 + 8192);
@@ -26,7 +28,8 @@ async function main() {
     fs.copyFileSync(path.resolve(__dirname, '../packaging/fnos/ICON.PNG'), coverFile);
     let log = '';
     const server = spawn(process.execPath, [path.join(root, 'server/index.js'), '--port', String(port)],
-        { stdio: ['ignore', 'pipe', 'pipe'] });
+        { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env,
+            NES_ROM_DIR: path.dirname(romFile), NES_SCREEN_DIR: path.dirname(coverFile) } });
     server.stdout.on('data', chunk => { log += chunk; });
     server.stderr.on('data', chunk => { log += chunk; });
     const base = 'http://127.0.0.1:' + port;
@@ -43,6 +46,19 @@ async function main() {
         assert.ok(ready, 'Server did not become ready: ' + log);
         const games = await (await fetch(base + '/api/games/')).json();
         assert.ok(games.some(game => game.name === name));
+        const added = path.join(path.dirname(romFile), name + '-added.nes');
+        fs.writeFileSync(added, rom);
+        try {
+            const reloaded = await (await fetch(base + '/api/games/reload', { method: 'POST' })).json();
+            assert.ok(reloaded.some(game => game.name === name + '-added'));
+            const again = await (await fetch(base + '/api/games/reload', { method: 'POST' })).json();
+            assert.equal(again.filter(game => game.name === name + '-added').length, 1);
+        } finally { fs.unlinkSync(added); }
+        const removed = await (await fetch(base + '/api/games/reload', { method: 'POST' })).json();
+        assert.ok(!removed.some(game => game.name === name + '-added'));
+        assert.equal((await fetch(base + '/api/games/reload', {
+            method: 'POST', headers: { Origin: 'https://other.example' }
+        })).status, 403);
         for (const route of ['/', '/settings', '/settings/controller', '/settings/language', '/' + name]) {
             const response = await fetch(base + route);
             assert.equal(response.status, 200, route);
@@ -65,7 +81,7 @@ async function main() {
         server.kill('SIGTERM');
         if (server.exitCode === null) await once(server, 'exit');
         for (const file of [romFile, coverFile]) fs.unlinkSync(file);
-        for (const directory of [path.dirname(romFile), path.dirname(coverFile), path.join(root, 'data')]) {
+        for (const directory of [path.dirname(romFile), path.dirname(coverFile), external]) {
             try { fs.rmdirSync(directory); } catch (_) { /* Keep any pre-existing data. */ }
         }
     }

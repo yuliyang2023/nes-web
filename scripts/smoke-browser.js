@@ -29,6 +29,8 @@ module.exports = async function smokeBrowser(base, fixture) {
         await page.goto(base);
         await page.getByRole('heading', { name: 'NES 游戏厅' }).waitFor();
         assert.equal(await page.evaluate(() => getComputedStyle(document.body).backgroundColor), 'rgb(245, 247, 251)');
+        await page.getByRole('button', { name: '重新扫描 ROM', exact: true }).click();
+        await page.getByRole('status').filter({ hasText: '扫描完成' }).waitFor();
         await page.locator('a[href="/' + fixture + '"]').click();
         await page.getByText('单人游戏', { exact: true }).click();
         await page.waitForSelector('canvas');
