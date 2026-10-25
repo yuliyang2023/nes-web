@@ -1,0 +1,11 @@
+[
+  {
+    "stepTitle": "安装 NES 游戏厅",
+    "items": [
+      {
+        "type": "tips",
+        "helpText": "应用使用官方 Node.js v24 运行时，访问端口为 8180。安装后从桌面图标打开。在文件管理的“应用文件 / nes-web / roms”中放入 .nes 文件，在 screen 中放入同名 .png 封面；导入后重启本应用。安装包不包含游戏 ROM，也不会改动已有 Docker 容器的数据。"
+      }
+    ]
+  }
+]

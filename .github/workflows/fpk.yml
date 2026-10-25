@@ -1,0 +1,131 @@
+name: Build fnOS FPK
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'FPK version (empty uses packaging/fnos/manifest)'
+        required: false
+        type: string
+  push:
+    branches: [master]
+    tags: ['v[0-9]*']
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fpk-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            build-tools/package-lock.json
+            build-tools/runtime/package-lock.json
+
+      - name: Select package version
+        id: version
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const manifest = fs.readFileSync('packaging/fnos/manifest', 'utf8');
+          const version = process.env.GITHUB_REF_TYPE === 'tag'
+            ? process.env.GITHUB_REF_NAME.replace(/^v/, '')
+            : process.env.REQUESTED_VERSION || manifest.match(/^version=(.+)$/m)[1];
+          if (!/^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$/.test(version)) throw Error('Invalid FPK version');
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `version=${version}\n`);
+          fs.appendFileSync(process.env.GITHUB_ENV, `FPK_VERSION=${version}\n`);
+          NODE
+
+      - name: Install locked build and runtime dependencies
+        run: |
+          npm ci --prefix build-tools --ignore-scripts --no-audit --no-fund
+          npm ci --prefix build-tools/runtime --ignore-scripts --no-audit --no-fund
+
+      - name: Run regression tests
+        env:
+          NODE_PATH: ${{ github.workspace }}/build-tools/node_modules
+        run: npm test
+
+      - name: Build from source and smoke test
+        run: |
+          npm run build:source
+          node build-tools/node_modules/playwright/cli.js install --with-deps chromium
+          node scripts/smoke-dist.js --browser
+
+      - name: Upload browser failure screenshot
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: browser-failure
+          path: dist/browser-smoke/*.png
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Install official fnpack 1.2.3
+        env:
+          FNPACK_SHA256: 54b97fa7b70968c4d05c79840f5daeff508957d0bb2062fdb0376d00d9615c93
+        run: |
+          curl --fail --location --retry 3 --connect-timeout 15 --max-time 120 \
+            https://static2.fnnas.com/fnpack/fnpack-1.2.3-linux-amd64 \
+            --output "$RUNNER_TEMP/fnpack"
+          echo "$FNPACK_SHA256  $RUNNER_TEMP/fnpack" | sha256sum --check
+          chmod +x "$RUNNER_TEMP/fnpack"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
+      - name: Package and verify FPK
+        run: |
+          bash scripts/build-fpk.sh --dist "$GITHUB_WORKSPACE/dist"
+          python3 scripts/verify-fpk.py "dist/fpk/nes-web-$FPK_VERSION-x86.fpk"
+          (cd dist/fpk && sha256sum --check "nes-web-$FPK_VERSION-x86.fpk.sha256")
+
+      - name: Upload installer and checksum
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: nes-web-${{ steps.version.outputs.version }}-x86-fpk
+          path: |
+            dist/fpk/*.fpk
+            dist/fpk/*.sha256
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: nes-web-${{ needs.build.outputs.version }}-x86-fpk
+          path: release-assets
+      - name: Publish tagged version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          if gh release view "$RELEASE_TAG" > /dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" release-assets/* --clobber
+          else
+            gh release create "$RELEASE_TAG" release-assets/* \
+              --verify-tag --title "NES 游戏厅 $RELEASE_TAG" --generate-notes
+          fi

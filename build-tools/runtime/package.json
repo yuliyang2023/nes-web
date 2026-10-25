@@ -1,0 +1,20 @@
+{
+  "name": "nes-web-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "license": "GPL-3.0",
+  "dependencies": {
+    "sinjection": "^0.1.1",
+    "xson.js": "^0.1.0",
+    "body-parser": "^1.18.2",
+    "express": "^4.16.2",
+    "express-ws": "^3.0.0",
+    "moment": "^2.19.1",
+    "moment-timezone": "^0.5.14",
+    "nconf": "^0.8.5",
+    "pako": "^1.0.6",
+    "uuid": "^3.1.0",
+    "winston": "^2.4.0",
+    "ws": "^3.3.2"
+  }
+}
